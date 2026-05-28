@@ -44,9 +44,7 @@ router.post('/cadastrar', (req, res) => {
 });
 
 router.post('/porcentagem', (req, res) => {
-    
     const limiteMaximo = req.body.limite_maximo || 100;
-    
     const limiteMinimo = req.body.limite_minimo ?? 0;
 
     const sql = `
@@ -61,7 +59,6 @@ router.post('/porcentagem', (req, res) => {
            OR quantidade >= ?
     `;
 
-    // A execução no banco também continua idêntica
     db.query(sql, [limiteMaximo, limiteMinimo, limiteMaximo], (err, results) => {
         if (err) {
             console.error(err);

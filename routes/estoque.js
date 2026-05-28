@@ -86,5 +86,57 @@ router.post('/registro', (req, res) => {
     });
 });
 
+router.post('/relatorio', (req, res) => {
+    const dataInicial = req.body.data_inicial;
+    const dataFinal = req.body.data_final;
+
+    if (!dataInicial || !dataFinal) {
+        return res.status(400).json({ error: 'As datas inicial e final são obrigatórias.' });
+    }
+
+    const sql = `
+        SELECT 
+            p.nome AS nome_produto,
+            p.quantidade AS quantidade_atual,
+            
+            -- Total de Entradas
+            SUM(CASE WHEN m.tipo = 'Entrada' THEN m.quantidade ELSE 0 END) AS total_entradas,
+            
+            -- Total de Saídas
+            SUM(CASE WHEN m.tipo = 'Saída' THEN m.quantidade ELSE 0 END) AS total_saidas,
+            
+            -- Saldo do Período (Entradas - Saídas)
+            SUM(CASE WHEN m.tipo = 'Entrada' THEN m.quantidade ELSE 0 END) - 
+            SUM(CASE WHEN m.tipo = 'Saída' THEN m.quantidade ELSE 0 END) AS saldo_periodo,
+            
+            -- Valor Financeiro das Entradas (Total Entrada * Valor da Unidade)
+            SUM(CASE WHEN m.tipo = 'Entrada' THEN (m.quantidade * p.valor_unidade) ELSE 0 END) AS financeiro_entradas,
+            
+            -- Valor Financeiro das Saídas (Total Saída * Valor da Unidade)
+            SUM(CASE WHEN m.tipo = 'Saída' THEN (m.quantidade * p.valor_unidade) ELSE 0 END) AS financeiro_saidas
+
+        FROM produtos p
+        JOIN movimentacoes m ON p.id = m.id_produtos
+        WHERE DATE(m.dt) >= ? AND DATE(m.dt) <= ?
+        GROUP BY p.id, p.nome, p.quantidade, p.valor_unidade
+    `;
+
+    db.query(sql, [dataInicial, dataFinal], (err, results) => {
+        if (err) {
+            console.error(err);
+            res.status(500).json({ error: 'Erro ao gerar o relatório de movimentações' });
+        } else {
+            res.json({
+                periodo: {
+                    inicio: dataInicial,
+                    fim: dataFinal
+                },
+                relatorio: results
+            });
+        }
+    });
+});
+
+
 
 module.exports = router;

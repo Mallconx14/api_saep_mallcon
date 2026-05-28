@@ -22,6 +22,16 @@ router.get('/categoria', (req, res) => {
     });
 }); 
 
+router.get('/decrescente', (req, res) => {
+    db.query('SELECT * FROM movimentacoes ORDER BY dt DESC', (err, results) => {
+        if (err) {
+            res.status(500).json({ error: 'Erro ao buscar usuários' });
+        } else {
+            res.json(results);
+        }
+    });
+}); 
+
 router.post('/cadastrar', (req, res) => {
     const { nome, quantidade, valor_unidade, categoria } = req.body;
     db.query('INSERT INTO produtos (nome, quantidade, valor_unidade, categoria) VALUES (?, ?, ?, ?)', [nome, quantidade, valor_unidade, categoria], (err, results) => {
@@ -29,6 +39,41 @@ router.post('/cadastrar', (req, res) => {
             res.status(500).json({ error: 'Erro ao inserir informações', err});
         } else {
             res.json(results);
+        }
+    });
+});
+
+router.post('/porcentagem', (req, res) => {
+    
+    const limiteMaximo = req.body.limite_maximo || 100;
+    
+    const limiteMinimo = req.body.limite_minimo ?? 0;
+
+    const sql = `
+        SELECT 
+            id, 
+            nome, 
+            quantidade, 
+            categoria,
+            ROUND((quantidade / ?) * 100, 2) AS percentual_atingido
+        FROM produtos
+        WHERE quantidade <= ? 
+           OR quantidade >= ?
+    `;
+
+    // A execução no banco também continua idêntica
+    db.query(sql, [limiteMaximo, limiteMinimo, limiteMaximo], (err, results) => {
+        if (err) {
+            console.error(err);
+            res.status(500).json({ error: 'Erro ao buscar o relatório de estoque' });
+        } else {
+            res.json({
+                filtros_aplicados: {
+                    minimo: limiteMinimo,
+                    maximo: limiteMaximo
+                },
+                produtos_no_limite: results
+            });
         }
     });
 });

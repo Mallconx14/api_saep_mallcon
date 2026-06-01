@@ -137,6 +137,35 @@ router.post('/relatorio', (req, res) => {
     });
 });
 
+router.get('/maiores_saidas', (req, res) => {
+    const { data_inicio, data_fim } = req.query;
+
+    if (!data_inicio || !data_fim) {
+        return res.status(400).json({ error: 'As datas inicial (data_inicio) e final (data_fim) são obrigatórias.' });
+    }
+
+    const sql = `
+        SELECT 
+            p.nome AS nome_produto,
+            SUM(m.quantidade) AS quantidade_total_saida,
+            SUM(m.quantidade * p.valor_unidade) AS valor_total_financeiro
+        FROM movimentacoes m
+        INNER JOIN produtos p ON m.id_produtos = p.id
+        WHERE m.tipo = 'saida' 
+          AND m.dt BETWEEN ? AND ?
+        GROUP BY p.id, p.nome
+        ORDER BY quantidade_total_saida DESC;
+    `;
+
+    db.query(sql, [data_inicio, data_fim], (err, results) => {
+        if (err) {
+            console.error(err);
+            res.status(500).json({ error: 'Erro ao gerar o relatório de saídas.' });
+        } else {
+            res.json(results);
+        }
+    });
+});
 
 
 module.exports = router;
